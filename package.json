@@ -1,0 +1,31 @@
+{
+  "name": "iot_network",
+  "version": "1.0.0",
+  "description": "MQTT network",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "npm run serve",
+    "serve": "node dist/server.js",
+    "watch-node": "nodemon dist/server.js",
+    "watch-ts": "tsc -w"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Kolezhniuk/iot_network.git"
+  },
+  "author": "D.Kolezhniuk",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Kolezhniuk/iot_network/issues"
+  },
+  "homepage": "https://github.com/Kolezhniuk/iot_network#readme",
+  "devDependencies": {
+    "nodemon": "^1.18.9",
+    "tslint": "^5.12.0",
+    "typescript": "^3.2.2"
+  },
+  "dependencies": {
+    "mqtt": "^2.18.8"
+  }
+}
