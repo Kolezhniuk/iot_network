@@ -4,11 +4,8 @@
   "description": "MQTT network",
   "main": "index.js",
   "scripts": {
-    "build": "tsc",
     "start": "npm run serve",
-    "serve": "node dist/server.js",
-    "watch-node": "nodemon dist/server.js",
-    "watch-ts": "tsc -w"
+    "serve": "node dist/server.js"
   },
   "repository": {
     "type": "git",
@@ -21,11 +18,10 @@
   },
   "homepage": "https://github.com/Kolezhniuk/iot_network#readme",
   "devDependencies": {
-    "nodemon": "^1.18.9",
-    "tslint": "^5.12.0",
-    "typescript": "^3.2.2"
+    "jslint": "^0.12.0"
   },
   "dependencies": {
+    "mosca": "^2.8.3",
     "mqtt": "^2.18.8"
   }
 }
