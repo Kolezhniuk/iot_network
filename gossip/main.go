@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -93,19 +94,22 @@ func main() {
 	logger.Print(<-errs)
 }
 
-type counter interface {
-	get() int
-	incr() int
+type sensorsData interface {
+	get() string
+	post(result string) string
 }
 
-func handle(c counter) http.HandlerFunc {
+func handle(sd sensorsData) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case "GET":
-			fmt.Fprintf(w, "get => %d\n", c.get())
+			fmt.Fprintf(w, "get => %d\n", sd.get())
 
 		case "POST":
-			fmt.Fprintf(w, "incr => %d\n", c.incr())
+			buf := new(bytes.Buffer)
+			buf.ReadFrom(r.Body)
+			newData := buf.String()
+			fmt.Fprintf(w, "incr => %d\n", sd.post(newData))
 		}
 	}
 }

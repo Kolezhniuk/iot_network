@@ -57,16 +57,16 @@ func (p *peer) register(send mesh.Gossip) {
 }
 
 // Return the current value of the counter.
-func (p *peer) get() int {
+func (p *peer) get() string {
 	return p.st.get()
 }
 
-// Increment the counter by one.
-func (p *peer) incr() (result int) {
+//handling json here.
+func (p *peer) post(result string) string {
 	c := make(chan struct{})
 	p.actions <- func() {
 		defer close(c)
-		st := p.st.incr()
+		st := p.st.post(result)
 		if p.send != nil {
 			p.send.GossipBroadcast(st)
 		} else {

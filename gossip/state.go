@@ -2,9 +2,8 @@ package main
 
 import (
 	"bytes"
-	"sync"
-
 	"encoding/gob"
+	"sync"
 
 	"github.com/weaveworks/mesh"
 )
@@ -29,16 +28,16 @@ func newState(self mesh.PeerName) *state {
 	}
 }
 
-func (st *state) get() (result int) {
+func (st *state) get() (result string) {
 	st.mtx.RLock()
 	defer st.mtx.RUnlock()
 	for _, v := range st.set {
-		result += v
+		result = v
 	}
 	return result
 }
 
-func (st *state) incr() (complete *state) {
+func (st *state) post(result string) (complete *state) {
 	st.mtx.Lock()
 	defer st.mtx.Unlock()
 	st.set[st.self]++
