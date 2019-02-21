@@ -94,18 +94,24 @@ func main() {
 }
 
 type counter interface {
-	get() int
-	incr() int
+	get() string
+	incr(payload string) string
 }
 
 func handle(c counter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case "GET":
-			fmt.Fprintf(w, "get => %d\n", c.get())
+			fmt.Fprintf(w, "get => %s\n", c.get())
 
 		case "POST":
-			fmt.Fprintf(w, "incr => %d\n", c.incr())
+			body, err := ioutil.ReadAll(r.Body)
+			if err != nil {
+				panic(err)
+			}
+			var payload = string(body)
+			fmt.Println("response Body:", payload)
+			fmt.Fprintf(w, "incr => %s\n", c.incr(payload))
 		}
 	}
 }
