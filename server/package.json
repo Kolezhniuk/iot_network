@@ -1,0 +1,14 @@
+{
+  "name": "data_poster",
+  "version": "1.0.0",
+  "description": "API for playing with  data for  gossip network",
+  "main": "api.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "D.Kolezhniuk",
+  "license": "ISC",
+  "devDependencies": {
+    "axios": "^0.18.0"
+  }
+}
