@@ -13,3 +13,7 @@ Testing replication between `N` goosip nodes.
 - File `server/api.js` used for sending some example data to random node
 - Yeah it wrriten on JavaScript :) (I .NET/JS dev so my apologize )
 - Next step is use telegraf to acummulate some statistics
+- Generate telegraf config 
+```
+telegraf --input-filter net:docker --output-filter influx config > docker_net_telegraf.conf
+```

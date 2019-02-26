@@ -6,7 +6,7 @@ const PORT = 8080;
 
 let POST_TEMPLATE = {
     node_id: 0,
-    message_id: "message_uuid_here{}",
+    message_id: "message_uuid_here ---> {}",
     message: "SAMPLE_MESSAGE"
 };
 
