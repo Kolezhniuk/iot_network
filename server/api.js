@@ -1,6 +1,6 @@
 const axios = require('axios');
 
-const NODE_COUNT = 3;
+const NODE_COUNT = 10;
 const IP_MASK = '172.17.0.{}';
 const PORT = 8080;
 
@@ -11,9 +11,8 @@ let POST_TEMPLATE = {
 };
 
 (function main() {
-    setInterval(() => postData(), 10000)
-
-
+    setInterval(() => postData(), 10000);
+    setInterval(() => getData(), 5000);
 })();
 
 
@@ -26,10 +25,23 @@ function postData() {
     postedData.message_id = postedData.message_id.replace('{}', new Date().toISOString())
     axios.post(address, postedData)
         .then((res) => {
-            console.info(`MESSAGE: ${postedData} POSTED, , details: ${res}`)
+            console.log(`MESSAGE: TO ${address} POSTED, , details: ${res}`)
         })
         .catch((error) => {
-            console.info(`ERROR DURING POSTING: ${postedData}, details: ${error}`)
+            console.log(`ERROR DURING POSTING: ${postedData}, details: ${error}`)
+        });
+
+}
+
+function getData() {
+
+    const address = getRandomIP().address;
+    axios.get(address)
+        .then((res) => {
+            console.log(`MESSAGE: to ADDRESS  ${address} GET,  details: ${res.data}`)
+        })
+        .catch((error) => {
+            console.log(`ERROR DURING GETTING to ADDRESS: ${address}, details: ${error}`)
         });
 
 }

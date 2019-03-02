@@ -12,7 +12,7 @@ import (
 // state is an implementation of a G-counter.
 type state struct {
 	mtx  sync.RWMutex
-	set  map[mesh.PeerName]string
+	set  map[mesh.PeerName]int
 	self mesh.PeerName
 }
 
@@ -24,24 +24,24 @@ var _ mesh.GossipData = &state{}
 // Other peers will populate us with data.
 func newState(self mesh.PeerName) *state {
 	return &state{
-		set:  map[mesh.PeerName]string{},
+		set:  map[mesh.PeerName]int{},
 		self: self,
 	}
 }
 
-func (st *state) get() (result string) {
+func (st *state) get() (result int) {
 	st.mtx.RLock()
 	defer st.mtx.RUnlock()
 	for _, v := range st.set {
-		result = v
+		result += v
 	}
 	return result
 }
 
-func (st *state) incr(payload string) (complete *state) {
+func (st *state) incr() (complete *state) {
 	st.mtx.Lock()
 	defer st.mtx.Unlock()
-	st.set[st.self] = payload
+	st.set[st.self]++
 	return &state{
 		set: st.set,
 	}
@@ -76,15 +76,15 @@ func (st *state) Merge(other mesh.GossipData) (complete mesh.GossipData) {
 
 // Merge the set into our state, abiding increment-only semantics.
 // Return a non-nil mesh.GossipData representation of the received set.
-func (st *state) mergeReceived(set map[mesh.PeerName]string) (received mesh.GossipData) {
+func (st *state) mergeReceived(set map[mesh.PeerName]int) (received mesh.GossipData) {
 	st.mtx.Lock()
 	defer st.mtx.Unlock()
 
 	for peer, v := range set {
-		// if v <= st.set[peer] {
-		// 	delete(set, peer) // optimization: make the forwarded data smaller
-		// 	continue
-		// }
+		if v <= st.set[peer] {
+			delete(set, peer) // optimization: make the forwarded data smaller
+			continue
+		}
 		st.set[peer] = v
 	}
 
@@ -95,15 +95,15 @@ func (st *state) mergeReceived(set map[mesh.PeerName]string) (received mesh.Goss
 
 // Merge the set into our state, abiding increment-only semantics.
 // Return any key/values that have been mutated, or nil if nothing changed.
-func (st *state) mergeDelta(set map[mesh.PeerName]string) (delta mesh.GossipData) {
+func (st *state) mergeDelta(set map[mesh.PeerName]int) (delta mesh.GossipData) {
 	st.mtx.Lock()
 	defer st.mtx.Unlock()
 
 	for peer, v := range set {
-		// if v <= st.set[peer] {
-		// delete(set, peer) // requirement: it's not part of a delta
-		// continue
-		// }
+		if v <= st.set[peer] {
+			delete(set, peer) // requirement: it's not part of a delta
+			continue
+		}
 		st.set[peer] = v
 	}
 
@@ -117,14 +117,14 @@ func (st *state) mergeDelta(set map[mesh.PeerName]string) (delta mesh.GossipData
 
 // Merge the set into our state, abiding increment-only semantics.
 // Return our resulting, complete state.
-func (st *state) mergeComplete(set map[mesh.PeerName]string) (complete mesh.GossipData) {
+func (st *state) mergeComplete(set map[mesh.PeerName]int) (complete mesh.GossipData) {
 	st.mtx.Lock()
 	defer st.mtx.Unlock()
 
 	for peer, v := range set {
-		// if v > st.set[peer] {
-		st.set[peer] = v
-		// }
+		if v > st.set[peer] {
+			st.set[peer] = v
+		}
 	}
 
 	return &state{
