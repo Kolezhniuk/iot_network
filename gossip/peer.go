@@ -108,7 +108,7 @@ func (p *peer) OnGossip(buf []byte) (delta mesh.GossipData, err error) {
 
 // Merge the gossiped data represented by buf into our state.
 // Return the state information that was modified.
-func (p *peer) 	(src mesh.PeerName, buf []byte) (received mesh.GossipData, err error) {
+func (p *peer) OnGossipBroadcast(src mesh.PeerName, buf []byte) (received mesh.GossipData, err error) {
 	var set map[mesh.PeerName]int
 	if err := gob.NewDecoder(bytes.NewReader(buf)).Decode(&set); err != nil {
 		return nil, err
