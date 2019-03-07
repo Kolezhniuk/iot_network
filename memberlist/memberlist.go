@@ -18,7 +18,7 @@ import (
 var (
 	mtx        sync.RWMutex
 	members    = flag.String("members", "", "comma seperated list of members")
-	port       = flag.Int("port", 4001, "http port")
+	httpPort   = flag.Int("http", 8080, "http port")
 	gossipPort = flag.Int("gport", 6001, "gossip port")
 	items      = map[string]string{}
 	broadcasts *memberlist.TransmitLimitedQueue
@@ -201,6 +201,7 @@ func getHandler(w http.ResponseWriter, r *http.Request) {
 func start() error {
 	hostname, _ := os.Hostname()
 	c := memberlist.DefaultLocalConfig()
+	// c.AdvertiseAddr = "127.0.0.1"
 	c.Delegate = &delegate{}
 	c.BindPort = *gossipPort
 	c.Name = hostname + "-" + uuid.NewUUID().String()
@@ -232,8 +233,8 @@ func main() {
 	}
 
 	http.HandleFunc("/", handleRequests)
-	fmt.Printf("Listening on :%d\n", *port)
-	if err := http.ListenAndServe(fmt.Sprintf(":%d", *port), nil); err != nil {
+	fmt.Printf("Listening on :%d\n", *httpPort)
+	if err := http.ListenAndServe(fmt.Sprintf(":%d", *httpPort), nil); err != nil {
 		fmt.Println(err)
 	}
 }
