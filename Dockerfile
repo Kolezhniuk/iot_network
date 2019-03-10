@@ -1,15 +1,12 @@
 FROM golang:1.11-alpine3.8
 
-ADD gossip /gossip
+ADD memberlist /memberlist
 
-WORKDIR /gossip
+WORKDIR /memberlist
 
 RUN apk update && apk upgrade && \
     apk add --no-cache bash git openssh
-
-RUN go get github.com/weaveworks/mesh && go build
-
-RUN ./gossip -mesh :6001 -http :8080 -peer 172.17.0.2:6001 &
+RUN go get github.com/hashicorp/memberlist && go get github.com/pborman/uuid && go build
 
 #docker-compose up --scale app=3
 

@@ -1,211 +1,61 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
-	"sync"
-	"time"
+	"sync/atomic"
 
 	"github.com/hashicorp/memberlist"
+
 	"github.com/pborman/uuid"
 )
 
 var (
-	mtx        sync.RWMutex
-	members    = flag.String("members", "", "comma seperated list of members")
-	httpPort   = flag.Int("http", 8080, "http port")
-	gossipPort = flag.Int("gport", 6001, "gossip port")
-	items      = map[string]string{}
-	broadcasts *memberlist.TransmitLimitedQueue
+	counter *Counter
+
+	members  = flag.String("members", "", "comma seperated list of members")
+	port     = flag.Int("port", 8080, "http port")
+	rpc_port = flag.Int("rpc_port", 6001, "memberlist port (0 = auto select)")
+
+	m *memberlist.Memberlist
 )
 
-type broadcast struct {
-	msg    []byte
-	notify chan<- struct{}
+type Counter struct {
+	val int32
 }
 
-type delegate struct{}
-
-type update struct {
-	Action string // add, del
-	Data   map[string]string
+// IncVal increments the counter's value by d
+func (c *Counter) IncVal(d int) {
+	atomic.AddInt32(&c.val, int32(d))
 }
 
-func init() {
-	flag.Parse()
+// Count fetches the counter value
+func (c *Counter) Count() int {
+	return int(atomic.LoadInt32(&c.val))
 }
 
-func (b *broadcast) Invalidates(other memberlist.Broadcast) bool {
-	return false
-}
-
-func (b *broadcast) Message() []byte {
-	return b.msg
-}
-
-func (b *broadcast) Finished() {
-	if b.notify != nil {
-		close(b.notify)
-	}
-}
-
-func (d *delegate) NodeMeta(limit int) []byte {
-	return []byte{}
-}
-
-func (d *delegate) NotifyMsg(b []byte) {
-	if len(b) == 0 {
-		return
-	}
-
-	switch b[0] {
-	case 'd': // data
-		var updates []*update
-		if err := json.Unmarshal(b[1:], &updates); err != nil {
-			return
-		}
-		mtx.Lock()
-		for _, u := range updates {
-			for k, v := range u.Data {
-				switch u.Action {
-				case "add":
-					items[k] = v
-				case "del":
-					delete(items, k)
-				}
-			}
-		}
-		mtx.Unlock()
-	}
-}
-
-func (d *delegate) GetBroadcasts(overhead, limit int) [][]byte {
-	return broadcasts.GetBroadcasts(overhead, limit)
-}
-
-func (d *delegate) LocalState(join bool) []byte {
-	mtx.RLock()
-	m := items
-	mtx.RUnlock()
-	b, _ := json.Marshal(m)
-	return b
-}
-
-func (d *delegate) MergeRemoteState(buf []byte, join bool) {
-	if len(buf) == 0 {
-		return
-	}
-	if !join {
-		return
-	}
-	var m map[string]string
-	if err := json.Unmarshal(buf, &m); err != nil {
-		return
-	}
-	mtx.Lock()
-	for k, v := range m {
-		items[k] = v
-	}
-	mtx.Unlock()
-}
-func handleRequests(w http.ResponseWriter, r *http.Request) {
-
-	switch r.Method {
-	case "GET":
-		getHandler(w, r)
-	case "POST":
-		addHandler(w, r)
-	}
-}
-func addHandler(w http.ResponseWriter, r *http.Request) {
-	hostname, _ := os.Hostname()
-	key := time.Now().Format(time.RFC850) + "<-->" + hostname
-	body, error := ioutil.ReadAll(r.Body)
-	if error != nil {
-		panic(error)
-	}
-	val := string(body)
-	mtx.Lock()
-	items[key] = val
-	mtx.Unlock()
-
-	b, err := json.Marshal([]*update{
-		&update{
-			Action: "add",
-			Data: map[string]string{
-				key: val,
-			},
-		},
-	})
-
-	if err != nil {
-		http.Error(w, err.Error(), 500)
-		return
-	}
-
-	broadcasts.QueueBroadcast(&broadcast{
-		msg:    append([]byte("d"), b...),
-		notify: nil,
-	})
-	fmt.Println("post =>  ", items)
-
-}
-
-func delHandler(w http.ResponseWriter, r *http.Request) {
-	r.ParseForm()
-	key := r.Form.Get("key")
-	mtx.Lock()
-	delete(items, key)
-	mtx.Unlock()
-
-	b, err := json.Marshal([]*update{
-		&update{
-			Action: "del",
-			Data: map[string]string{
-				key: "",
-			},
-		},
-	})
-
-	if err != nil {
-		http.Error(w, err.Error(), 500)
-		return
-	}
-
-	broadcasts.QueueBroadcast(&broadcast{
-		msg:    append([]byte("d"), b...),
-		notify: nil,
-	})
-}
-
-func getHandler(w http.ResponseWriter, r *http.Request) {
-	mtx.RLock()
-	items := items
-	mtx.RUnlock()
-	js, err := json.Marshal(items)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(js)
-	fmt.Println("get =>  ", items)
-
+func (c *Counter) String() string {
+	return strconv.Itoa(counter.Count())
 }
 
 func start() error {
+	flag.Parse()
+
+	counter = &Counter{}
+
 	hostname, _ := os.Hostname()
-	c := memberlist.DefaultLocalConfig()
-	// c.AdvertiseAddr = "127.0.0.1"
-	c.Delegate = &delegate{}
-	c.BindPort = *gossipPort
+	c := memberlist.DefaultWANConfig()
+
+	c.BindPort = *rpc_port
 	c.Name = hostname + "-" + uuid.NewUUID().String()
-	m, err := memberlist.Create(c)
+
+	var err error
+
+	m, err = memberlist.Create(c)
 	if err != nil {
 		return err
 	}
@@ -216,12 +66,7 @@ func start() error {
 			return err
 		}
 	}
-	broadcasts = &memberlist.TransmitLimitedQueue{
-		NumNodes: func() int {
-			return m.NumMembers()
-		},
-		RetransmitMult: 3,
-	}
+
 	node := m.LocalNode()
 	fmt.Printf("Local member %s:%d\n", node.Addr, node.Port)
 	return nil
@@ -232,9 +77,13 @@ func main() {
 		fmt.Println(err)
 	}
 
-	http.HandleFunc("/", handleRequests)
-	fmt.Printf("Listening on :%d\n", *httpPort)
-	if err := http.ListenAndServe(fmt.Sprintf(":%d", *httpPort), nil); err != nil {
+	http.HandleFunc("/cluster", clusterHandler)
+
+	http.HandleFunc("/inc", incHandler)
+	http.HandleFunc("/", getHandler)
+
+	fmt.Printf("Listening on :%d\n", *port)
+	if err := http.ListenAndServe(fmt.Sprintf(":%d", *port), nil); err != nil {
 		fmt.Println(err)
 	}
 }
