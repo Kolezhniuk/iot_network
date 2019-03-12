@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -94,30 +93,19 @@ func main() {
 	logger.Print(<-errs)
 }
 
-type gossipData interface {
-	get() map[string]string
-	add(data string) map[string]string
+type counter interface {
+	get() int
+	incr() int
 }
 
-func handle(data gossipData) http.HandlerFunc {
+func handle(c counter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case "GET":
-			js, err := json.Marshal(data.get())
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			w.Header().Set("Content-Type", "application/json")
-			w.Write(js)
+			fmt.Fprintf(w, "get => %d\n", c.get())
 
 		case "POST":
-			bodyStream, error := ioutil.ReadAll(r.Body)
-			if error != nil {
-				panic(error)
-			}
-			body := string(bodyStream)
-			data.add(body)
+			fmt.Fprintf(w, "incr => %d\n", c.incr())
 		}
 	}
 }

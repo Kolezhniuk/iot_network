@@ -2,18 +2,17 @@ package main
 
 import (
 	"bytes"
-	"strconv"
 	"sync"
-	"time"
 
 	"encoding/gob"
 
 	"github.com/weaveworks/mesh"
 )
 
+// state is an implementation of a G-counter.
 type state struct {
 	mtx  sync.RWMutex
-	data map[string]string
+	set  map[mesh.PeerName]int
 	self mesh.PeerName
 }
 
@@ -25,34 +24,34 @@ var _ mesh.GossipData = &state{}
 // Other peers will populate us with data.
 func newState(self mesh.PeerName) *state {
 	return &state{
-		data: map[string]string{},
+		set:  map[mesh.PeerName]int{},
 		self: self,
 	}
 }
 
-func (st *state) get() map[string]string {
+func (st *state) get() (result int) {
 	st.mtx.RLock()
 	defer st.mtx.RUnlock()
-	// for _, v := range st.set {
-	// 	for k, v := range st.set
-	// 	result += v
-	// }
-	return st.data
+	for _, v := range st.set {
+		result += v
+	}
+	return result
 }
 
-func (st *state) add(data string) (complete *state) {
+func (st *state) incr() (complete *state) {
 	st.mtx.Lock()
 	defer st.mtx.Unlock()
-	uuid := strconv.Itoa(int(st.self)) + "<-->" + time.Now().Format(time.RFC3339)
-	st.data[uuid] = data
-	return st
+	st.set[st.self]++
+	return &state{
+		set: st.set,
+	}
 }
 
 func (st *state) copy() *state {
 	st.mtx.RLock()
 	defer st.mtx.RUnlock()
 	return &state{
-		data: st.data,
+		set: st.set,
 	}
 }
 
@@ -63,7 +62,7 @@ func (st *state) Encode() [][]byte {
 	st.mtx.RLock()
 	defer st.mtx.RUnlock()
 	var buf bytes.Buffer
-	if err := gob.NewEncoder(&buf).Encode(st.data); err != nil {
+	if err := gob.NewEncoder(&buf).Encode(st.set); err != nil {
 		panic(err)
 	}
 	return [][]byte{buf.Bytes()}
@@ -72,46 +71,63 @@ func (st *state) Encode() [][]byte {
 // Merge merges the other GossipData into this one,
 // and returns our resulting, complete state.
 func (st *state) Merge(other mesh.GossipData) (complete mesh.GossipData) {
-	return st.mergeComplete(other.(*state).copy().data)
+	return st.mergeComplete(other.(*state).copy().set)
 }
 
 // Merge the set into our state, abiding increment-only semantics.
 // Return a non-nil mesh.GossipData representation of the received set.
-func (st *state) mergeReceived(set map[string]string) (received mesh.GossipData) {
+func (st *state) mergeReceived(set map[mesh.PeerName]int) (received mesh.GossipData) {
 	st.mtx.Lock()
 	defer st.mtx.Unlock()
 
-	for k, v := range set {
-		st.data[k] = v
+	for peer, v := range set {
+		if v <= st.set[peer] {
+			delete(set, peer) // optimization: make the forwarded data smaller
+			continue
+		}
+		st.set[peer] = v
 	}
 
-	return st
+	return &state{
+		set: set, // all remaining elements were novel to us
+	}
 }
 
 // Merge the set into our state, abiding increment-only semantics.
 // Return any key/values that have been mutated, or nil if nothing changed.
-func (st *state) mergeDelta(set map[string]string) (delta mesh.GossipData) {
+func (st *state) mergeDelta(set map[mesh.PeerName]int) (delta mesh.GossipData) {
 	st.mtx.Lock()
 	defer st.mtx.Unlock()
+
+	for peer, v := range set {
+		if v <= st.set[peer] {
+			delete(set, peer) // requirement: it's not part of a delta
+			continue
+		}
+		st.set[peer] = v
+	}
+
 	if len(set) <= 0 {
 		return nil // per OnGossip requirements
 	}
-	for k, v := range set {
-		st.data[k] = v
+	return &state{
+		set: set, // all remaining elements were novel to us
 	}
-
-	return st
 }
 
 // Merge the set into our state, abiding increment-only semantics.
 // Return our resulting, complete state.
-func (st *state) mergeComplete(set map[string]string) (complete mesh.GossipData) {
+func (st *state) mergeComplete(set map[mesh.PeerName]int) (complete mesh.GossipData) {
 	st.mtx.Lock()
 	defer st.mtx.Unlock()
 
-	for k, v := range set {
-		st.data[k] = v
+	for peer, v := range set {
+		if v > st.set[peer] {
+			st.set[peer] = v
+		}
 	}
 
-	return st
+	return &state{
+		set: st.set, // n.b. can't .copy() due to lock contention
+	}
 }

@@ -57,16 +57,16 @@ func (p *peer) register(send mesh.Gossip) {
 }
 
 // Return the current value of the counter.
-func (p *peer) get() map[string]string {
+func (p *peer) get() int {
 	return p.st.get()
 }
 
 // Increment the counter by one.
-func (p *peer) add(data string) (result map[string]string) {
+func (p *peer) incr() (result int) {
 	c := make(chan struct{})
 	p.actions <- func() {
 		defer close(c)
-		st := p.st.add(data)
+		st := p.st.incr()
 		if p.send != nil {
 			p.send.GossipBroadcast(st)
 		} else {
@@ -85,14 +85,14 @@ func (p *peer) stop() {
 // Return a copy of our complete state.
 func (p *peer) Gossip() (complete mesh.GossipData) {
 	complete = p.st.copy()
-	p.logger.Printf("Gossip => complete %v", complete.(*state).data)
+	p.logger.Printf("Gossip => complete %v", complete.(*state).set)
 	return complete
 }
 
 // Merge the gossiped data represented by buf into our state.
 // Return the state information that was modified.
 func (p *peer) OnGossip(buf []byte) (delta mesh.GossipData, err error) {
-	var set map[string]string
+	var set map[mesh.PeerName]int
 	if err := gob.NewDecoder(bytes.NewReader(buf)).Decode(&set); err != nil {
 		return nil, err
 	}
@@ -101,7 +101,7 @@ func (p *peer) OnGossip(buf []byte) (delta mesh.GossipData, err error) {
 	if delta == nil {
 		p.logger.Printf("OnGossip %v => delta %v", set, delta)
 	} else {
-		p.logger.Printf("OnGossip %v => delta %v", set, delta.(*state).data)
+		p.logger.Printf("OnGossip %v => delta %v", set, delta.(*state).set)
 	}
 	return delta, nil
 }
@@ -109,7 +109,7 @@ func (p *peer) OnGossip(buf []byte) (delta mesh.GossipData, err error) {
 // Merge the gossiped data represented by buf into our state.
 // Return the state information that was modified.
 func (p *peer) OnGossipBroadcast(src mesh.PeerName, buf []byte) (received mesh.GossipData, err error) {
-	var set map[string]string
+	var set map[mesh.PeerName]int
 	if err := gob.NewDecoder(bytes.NewReader(buf)).Decode(&set); err != nil {
 		return nil, err
 	}
@@ -118,14 +118,14 @@ func (p *peer) OnGossipBroadcast(src mesh.PeerName, buf []byte) (received mesh.G
 	if received == nil {
 		p.logger.Printf("OnGossipBroadcast %s %v => delta %v", src, set, received)
 	} else {
-		p.logger.Printf("OnGossipBroadcast %s %v => delta %v", src, set, received.(*state).data)
+		p.logger.Printf("OnGossipBroadcast %s %v => delta %v", src, set, received.(*state).set)
 	}
 	return received, nil
 }
 
 // Merge the gossiped data represented by buf into our state.
 func (p *peer) OnGossipUnicast(src mesh.PeerName, buf []byte) error {
-	var set map[string]string
+	var set map[mesh.PeerName]int
 	if err := gob.NewDecoder(bytes.NewReader(buf)).Decode(&set); err != nil {
 		return err
 	}

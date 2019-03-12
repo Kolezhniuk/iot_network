@@ -4,8 +4,8 @@ const readline = require('readline');
 const exec = util.promisify(require('child_process').exec);
 
 
-const startContainer = 'docker run --name gossip_node_{} -d -t iot_network_gossip:base'
-const command = 'docker exec -d gossip_node_{}  ./gossip -mesh :6001 -peer 172.17.0.{peer}:6001';
+const startContainer = 'docker run --name gossip_node_{} -d -t iot_network_gossip:latest'
+const command = 'docker exec -d gossip_node_{}  ./gossip -mesh :6001 -peer 172.17.0.2:6001 -http :8080';
 
 const NODE_COUNT = 10;
 (function main() {
@@ -36,7 +36,7 @@ async function runGossipInContainers() {
   let comm = ''
   for (let i = 1; i <= NODE_COUNT; i++) {
 
-    comm = command.replace('{}', i).replace('{peer}', i === 10 ? 2 : (i + 2))
+    comm = command.replace('{}', i)//.replace('{peer}', i === 10 ? 2 : (i + 2))
 
     console.log(comm)
     const { _, stderr } = await exec(comm);
