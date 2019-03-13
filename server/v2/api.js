@@ -55,7 +55,7 @@ function getRandomIP() {
 
 async function pingAlive() {
     for (let i = 2; i <= NODE_COUNT + 1; i++) {
-        const address = `http://${IP_MASK.replace('{}', i)}:${PORT}/get?key=foo`;
+        const address = `http://${IP_MASK.replace('{}', i)}:${PORT}`;
         try {
             const response = await axios.get(address);
             console.log(`GET to ${address} success with data`);
@@ -70,10 +70,10 @@ async function pingAlive() {
 }
 
 async function postSample() {
-    const address = `http://${IP_MASK.replace('{}', 3)}:${PORT}/add?key=foo&val=bar`;
+    const address = `http://${IP_MASK.replace('{}', 3)}:${PORT}`;
     try {
-        const response = await axios.get(address);
-        console.log(`GET to ${address} success with data`);
+        const response = await axios.post(address, POST_TEMPLATE);
+        console.log(`POST to ${address} success with data`);
         console.log(response.data);
 
     } catch (error) {

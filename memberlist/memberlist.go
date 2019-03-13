@@ -201,6 +201,7 @@ func getHandler(w http.ResponseWriter, r *http.Request) {
 func start() error {
 	hostname, _ := os.Hostname()
 	c := memberlist.DefaultLocalConfig()
+	c.GossipNodes = 4
 	// c.AdvertiseAddr = "127.0.0.1"
 	c.Delegate = &delegate{}
 	c.BindPort = *gossipPort

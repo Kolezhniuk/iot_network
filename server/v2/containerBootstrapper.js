@@ -5,7 +5,7 @@ const exec = util.promisify(require('child_process').exec);
 
 
 const startContainer = 'docker run --name gossipv2_node_{} -d -t iot_network_memberlist'
-const command = 'docker exec -d gossipv2_node_{}  ./memberlist';
+const command = 'docker exec -d gossipv2_node_{}  ./memberlist ';
 
 const NODE_COUNT = 10;
 (function main() {
