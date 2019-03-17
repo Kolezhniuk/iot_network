@@ -4,8 +4,8 @@ const readline = require('readline');
 const exec = util.promisify(require('child_process').exec);
 
 
-const startContainer = 'docker run --name gossipv2_node_{} -d -t iot_network_memberlist'
-const command = 'docker exec -d gossipv2_node_{}  ./memberlist ';
+const startContainer = 'docker run --name gossipv2_node_{} -d -t retro'
+const command = 'docker exec -d gossipv2_node_{} sh -c "./memberlist ';
 
 const NODE_COUNT = 10;
 (function main() {
@@ -37,9 +37,12 @@ async function runGossipInContainers() {
   //run gossip in first 9 containers
   for (let i = NODE_COUNT; i >= 1; i--) {
 
-    comm = i === 1 ? `${command.replace('{}', i)} -members="${Array.from(new Array(NODE_COUNT),
-      (x, index) => "172.17.0.{}:6001".replace('{}', index + 2)).join(',')}"`: command.replace('{}', i) ;
+    comm = i === 1 ? `${command.replace('{}', i)} -members='${Array.from(new Array(NODE_COUNT),
+      (x, index) => '172.17.0.{}:6001'.replace('{}', index + 2)).join(',')}' > log.txt"` : `${command.replace('{}', i)} > log.txt"`;
     console.log(comm)
+    await new Promise((resolve) => {
+      setTimeout(resolve, 2000)
+    });
     const { _, stderr } = await exec(comm);
 
     if (stderr) {
@@ -64,7 +67,7 @@ async function runGossipInContainersInChain() {
   //run gossip in first 9 containers
   for (let i = 1; i <= NODE_COUNT; i++) {
 
-    comm = command.replace('{}', i).replace('{octet}', i == 10 ? 2: i + 2);
+    comm = command.replace('{}', i).replace('{octet}', i == 10 ? 2 : i + 2);
     console.log(comm)
     const { _, stderr } = await exec(comm);
 

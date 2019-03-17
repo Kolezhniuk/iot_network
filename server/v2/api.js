@@ -9,7 +9,7 @@ let POST_TEMPLATE = { "test": Math.random() * 10 };
 (function main() {
     // setInterval(() =>
     //  postData()
-    postSample();
+    // postSample();
     //  , 5000);
     setInterval(() => pingAlive(), 10000);
     // pingAlive(5000);
@@ -75,11 +75,10 @@ async function postSample() {
         const response = await axios.post(address, POST_TEMPLATE);
         console.log(`POST to ${address} success with data`);
         console.log(response.data);
+        console.log('\n');
 
     } catch (error) {
         console.log(`ERROR GET to ${address}`);
     }
-
-
 
 }

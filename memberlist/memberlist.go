@@ -72,12 +72,7 @@ func (d *delegate) NotifyMsg(b []byte) {
 		mtx.Lock()
 		for _, u := range updates {
 			for k, v := range u.Data {
-				switch u.Action {
-				case "add":
-					items[k] = v
-				case "del":
-					delete(items, k)
-				}
+				items[k] = v
 			}
 		}
 		mtx.Unlock()
@@ -89,6 +84,9 @@ func (d *delegate) GetBroadcasts(overhead, limit int) [][]byte {
 }
 
 func (d *delegate) LocalState(join bool) []byte {
+	if len(items) == 0 {
+		return nil
+	}
 	mtx.RLock()
 	m := items
 	mtx.RUnlock()
@@ -156,33 +154,6 @@ func addHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func delHandler(w http.ResponseWriter, r *http.Request) {
-	r.ParseForm()
-	key := r.Form.Get("key")
-	mtx.Lock()
-	delete(items, key)
-	mtx.Unlock()
-
-	b, err := json.Marshal([]*update{
-		&update{
-			Action: "del",
-			Data: map[string]string{
-				key: "",
-			},
-		},
-	})
-
-	if err != nil {
-		http.Error(w, err.Error(), 500)
-		return
-	}
-
-	broadcasts.QueueBroadcast(&broadcast{
-		msg:    append([]byte("d"), b...),
-		notify: nil,
-	})
-}
-
 func getHandler(w http.ResponseWriter, r *http.Request) {
 	mtx.RLock()
 	items := items
@@ -199,10 +170,12 @@ func getHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func start() error {
+	num := 10
 	hostname, _ := os.Hostname()
 	c := memberlist.DefaultLocalConfig()
-	c.GossipNodes = 4
-	// c.AdvertiseAddr = "127.0.0.1"
+	c.GossipNodes = num
+	c.RetransmitMult = num
+	c.SuspicionMult = num
 	c.Delegate = &delegate{}
 	c.BindPort = *gossipPort
 	c.Name = hostname + "-" + uuid.NewUUID().String()
@@ -221,7 +194,7 @@ func start() error {
 		NumNodes: func() int {
 			return m.NumMembers()
 		},
-		RetransmitMult: 3,
+		RetransmitMult: num,
 	}
 	node := m.LocalNode()
 	fmt.Printf("Local member %s:%d\n", node.Addr, node.Port)
