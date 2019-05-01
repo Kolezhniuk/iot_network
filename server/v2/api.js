@@ -1,14 +1,16 @@
 const axios = require('axios');
 
-const NODE_COUNT = 16;
-const IP_MASK = '172.17.0.{}';
+const NODE_COUNT = 16; // Count of containers
+const IP_MASK = '172.17.0.{}';  /* Default IP address for docker containers */
 const PORT = 8080;
 
 let POST_TEMPLATE = { "test": Math.random() * 10 };
 
 (function main() {
+    postData();
+    // If you need post data with interval.
     // setInterval(() =>
-    //  postData()
+    // postData();
     // postSample();
     //  , 60000);
     setInterval(() => pingAlive(), 10000);
@@ -24,7 +26,7 @@ function postData() {
             console.log(`MESSAGE: TO ${address} POSTED, , details: ${res}`)
         })
         .catch((error) => {
-            console.log(`ERROR DURING POSTING: ${postedData}, details: ${error}`)
+            console.log(`ERROR DURING POST details: ${error}`)
         });
 
 }
@@ -65,20 +67,6 @@ async function pingAlive() {
             console.log(`ERROR GET to ${address}`);
         }
 
-    }
-
-}
-
-async function postSample() {
-    const address = `http://${IP_MASK.replace('{}', 3)}:${PORT}`;
-    try {
-        const response = await axios.post(address, POST_TEMPLATE);
-        console.log(`POST to ${address} success with data`);
-        console.log(response.data);
-        console.log('\n');
-
-    } catch (error) {
-        console.log(`ERROR GET to ${address}`);
     }
 
 }

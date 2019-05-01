@@ -4,8 +4,8 @@ const readline = require('readline');
 const exec = util.promisify(require('child_process').exec);
 
 
-const startContainer = 'docker run --name gossipv2_node_{} -d -t gv2test'
-const command = 'docker exec -d gossipv2_node_{} sh -c "./memberlist ';
+const startContainer = 'docker run --name gossip_node_{} -d -t gossip';
+const command = 'docker exec -d gossip_node_{} sh -c "./gossip ';
 
 const NODE_COUNT = 16;
 (function main() {
@@ -18,7 +18,7 @@ const NODE_COUNT = 16;
               queryLoop()
           ));
 
-})()
+})();
 
 
 async function runContainers() {
@@ -43,32 +43,6 @@ async function runGossipInContainers() {
     await new Promise((resolve) => {
       setTimeout(resolve, 2000)
     });
-    const { _, stderr } = await exec(comm);
-
-    if (stderr) {
-      console.error(`FAIL TO RUN GOSSIP in ${i} docker container, `, stderr);
-    }
-
-  }
-
-  // comm = `${command.replace('{}', 1)} -members="${Array.from(new Array(NODE_COUNT - 1),
-  //   (x, index) => "172.17.0.{}:6001".replace('{}', index + 3)).join(',')}"`;
-  // console.log(comm);
-  // const { _, stderr } = await exec(comm);
-
-  // if (stderr) {
-  //   console.error(`FAIL TO RUN GOSSIP in 1 docker container, `, stderr);
-  // }
-  return Promise.resolve();
-}
-
-async function runGossipInContainersInChain() {
-  let comm = '';
-  //run gossip in first 9 containers
-  for (let i = 1; i <= NODE_COUNT; i++) {
-
-    comm = command.replace('{}', i).replace('{octet}', i == 10 ? 2 : i + 2);
-    console.log(comm)
     const { _, stderr } = await exec(comm);
 
     if (stderr) {
@@ -106,8 +80,8 @@ function queryLoop() {
     input: process.stdin,
     output: process.stdout
   });
-  var recursiveAsyncReadLine = function () {
-    rl.question('If you want stop and remove containers, please type Q', function (answer) {
+  let recursiveAsyncReadLine =  () => {
+    rl.question('If you want stop and remove containers, please type Q',  (answer) => {
       if (answer.toLowerCase() === 'q') {
         stopContainers()
           .then(() => removeContainers())
@@ -116,7 +90,7 @@ function queryLoop() {
       }
       recursiveAsyncReadLine();
     });
-  }
+  };
   recursiveAsyncReadLine();
 }
 

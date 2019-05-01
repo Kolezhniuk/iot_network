@@ -1,16 +1,17 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
-	"sync/atomic"
+	"sync"
+	"time"
 
 	"github.com/hashicorp/memberlist"
-
 	"github.com/pborman/uuid"
 )
 
