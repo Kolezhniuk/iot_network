@@ -1,12 +1,13 @@
 FROM golang:1.11-alpine3.8
+# image alpine
+ADD gossip /gossip
 
-ADD memberlist /memberlist
-
-WORKDIR /memberlist
-
+WORKDIR /gossip
+# install dependencies
 RUN apk update && apk upgrade && \
-    apk add --no-cache bash git openssh 
-    # gcc
-# RUN go get github.com/derekparker/delve/cmd/dlv
+    apk add --no-cache bash git openssh
 RUN go get github.com/hashicorp/memberlist && go get github.com/pborman/uuid && go build
-# RUN dlv debug . -l 0.0.0.0:2345 --headless=true --log=true -- server
+# useful commands
+#docker-compose up --scale app=3
+#curl -Ss -XGET "http://172.17.0.3:8080/"
+#curl -Ss -XPOST "http://172.17.0.4:8080/"
