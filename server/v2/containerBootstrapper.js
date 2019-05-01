@@ -4,10 +4,10 @@ const readline = require('readline');
 const exec = util.promisify(require('child_process').exec);
 
 
-const startContainer = 'docker run --name gossipv2_node_{} -d -t iot_network_memberlist'
-const command = 'docker exec -d gossipv2_node_{}  ./memberlist';
+const startContainer = 'docker run --name gossip_node_{} -d -t gossip';
+const command = 'docker exec -d gossip_node_{} sh -c "./gossip ';
 
-const NODE_COUNT = 10;
+const NODE_COUNT = 16;
 (function main() {
   runContainers()
     .then(
@@ -18,7 +18,7 @@ const NODE_COUNT = 10;
               queryLoop()
           ));
 
-})()
+})();
 
 
 async function runContainers() {
@@ -37,35 +37,12 @@ async function runGossipInContainers() {
   //run gossip in first 9 containers
   for (let i = NODE_COUNT; i >= 1; i--) {
 
-    comm = i === 1 ? `${command.replace('{}', i)} -members="${Array.from(new Array(NODE_COUNT),
-      (x, index) => "172.17.0.{}:6001".replace('{}', index + 2)).join(',')}"`: command.replace('{}', i) ;
+    comm = i === 1 ? `${command.replace('{}', i)} -members='${Array.from(new Array(NODE_COUNT),
+      (x, index) => '172.17.0.{}:6001'.replace('{}', index + 2)).join(',')}' > log.txt"` : `${command.replace('{}', i)} > log.txt"`;
     console.log(comm)
-    const { _, stderr } = await exec(comm);
-
-    if (stderr) {
-      console.error(`FAIL TO RUN GOSSIP in ${i} docker container, `, stderr);
-    }
-
-  }
-
-  // comm = `${command.replace('{}', 1)} -members="${Array.from(new Array(NODE_COUNT - 1),
-  //   (x, index) => "172.17.0.{}:6001".replace('{}', index + 3)).join(',')}"`;
-  // console.log(comm);
-  // const { _, stderr } = await exec(comm);
-
-  // if (stderr) {
-  //   console.error(`FAIL TO RUN GOSSIP in 1 docker container, `, stderr);
-  // }
-  return Promise.resolve();
-}
-
-async function runGossipInContainersInChain() {
-  let comm = '';
-  //run gossip in first 9 containers
-  for (let i = 1; i <= NODE_COUNT; i++) {
-
-    comm = command.replace('{}', i).replace('{octet}', i == 10 ? 2: i + 2);
-    console.log(comm)
+    await new Promise((resolve) => {
+      setTimeout(resolve, 2000)
+    });
     const { _, stderr } = await exec(comm);
 
     if (stderr) {
@@ -103,8 +80,8 @@ function queryLoop() {
     input: process.stdin,
     output: process.stdout
   });
-  var recursiveAsyncReadLine = function () {
-    rl.question('If you want stop and remove containers, please type Q', function (answer) {
+  let recursiveAsyncReadLine =  () => {
+    rl.question('If you want stop and remove containers, please type Q',  (answer) => {
       if (answer.toLowerCase() === 'q') {
         stopContainers()
           .then(() => removeContainers())
@@ -113,7 +90,7 @@ function queryLoop() {
       }
       recursiveAsyncReadLine();
     });
-  }
+  };
   recursiveAsyncReadLine();
 }
 
