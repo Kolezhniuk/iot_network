@@ -1,6 +1,6 @@
 const axios = require('axios');
 
-const NODE_COUNT = 10;
+const NODE_COUNT = 16;
 const IP_MASK = '172.17.0.{}';
 const PORT = 8080;
 
@@ -10,7 +10,7 @@ let POST_TEMPLATE = { "test": Math.random() * 10 };
     // setInterval(() =>
     //  postData()
     // postSample();
-    //  , 5000);
+    //  , 60000);
     setInterval(() => pingAlive(), 10000);
     // pingAlive(5000);
 })();

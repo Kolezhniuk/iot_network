@@ -16,11 +16,13 @@ import (
 )
 
 var (
-	mtx        sync.RWMutex
-	members    = flag.String("members", "", "comma seperated list of members")
-	httpPort   = flag.Int("http", 8080, "http port")
-	gossipPort = flag.Int("gport", 6001, "gossip port")
-	items      = map[string]string{}
+	mtx         sync.RWMutex
+	members     = flag.String("members", "", "comma seperated list of members")
+	httpPort    = flag.Int("http", 8080, "http port")
+	gossipPort  = flag.Int("gport", 6001, "gossip port")
+	numberNodes = flag.Int("num", 16, "nodes by default")
+	items       = map[string]string{}
+
 	broadcasts *memberlist.TransmitLimitedQueue
 )
 
@@ -170,34 +172,40 @@ func getHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func start() error {
-	num := 10
+	var num int = *numberNodes
+	var parts []string
 	hostname, _ := os.Hostname()
 	c := memberlist.DefaultLocalConfig()
-	c.GossipNodes = num
-	c.RetransmitMult = num
-	c.SuspicionMult = num
 	c.Delegate = &delegate{}
 	c.BindPort = *gossipPort
 	c.Name = hostname + "-" + uuid.NewUUID().String()
-	m, err := memberlist.Create(c)
-	if err != nil {
-		return err
-	}
+
 	if len(*members) > 0 {
-		parts := strings.Split(*members, ",")
+		parts = strings.Split(*members, ",")
+		num = len(parts)
+	}
+	c.GossipNodes = num
+	c.SuspicionMult = num
+	c.RetransmitMult = num
+	m, creation_err := memberlist.Create(c)
+	if creation_err != nil {
+		return creation_err
+	}
+	if len(parts) > 0 {
 		_, err := m.Join(parts)
 		if err != nil {
 			return err
 		}
 	}
+
+	node := m.LocalNode()
+	fmt.Printf("Local member %s:%d\n", node.Addr, node.Port)
 	broadcasts = &memberlist.TransmitLimitedQueue{
 		NumNodes: func() int {
-			return m.NumMembers()
+			return num
 		},
 		RetransmitMult: num,
 	}
-	node := m.LocalNode()
-	fmt.Printf("Local member %s:%d\n", node.Addr, node.Port)
 	return nil
 }
 

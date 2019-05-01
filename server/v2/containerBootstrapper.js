@@ -4,10 +4,10 @@ const readline = require('readline');
 const exec = util.promisify(require('child_process').exec);
 
 
-const startContainer = 'docker run --name gossipv2_node_{} -d -t retro'
+const startContainer = 'docker run --name gossipv2_node_{} -d -t gv2test'
 const command = 'docker exec -d gossipv2_node_{} sh -c "./memberlist ';
 
-const NODE_COUNT = 10;
+const NODE_COUNT = 16;
 (function main() {
   runContainers()
     .then(
