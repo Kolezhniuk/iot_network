@@ -8,7 +8,7 @@ RUN apk update && apk upgrade && \
     apk add --no-cache bash git openssh
 
 RUN go get github.com/weaveworks/mesh && go build
-
+#how to use
 #docker-compose up --scale app=3
 
 #docker exec -d gossip_host1  ./gossip -mesh :6001 -http :8080
